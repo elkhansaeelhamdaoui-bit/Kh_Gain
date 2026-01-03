@@ -1,0 +1,686 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relational Algebra Calculator</title>
+    <style>
+        :root {
+            --bg-dark: #1e1e2e;
+            --bg-panel: #26293a;
+            --bg-input: #181922;
+            --accent: #7aa2f7;
+            --accent-hover: #5d87e0;
+            --text-main: #c0caf5;
+            --text-muted: #565f89;
+            --border: #414868;
+            --success: #9ece6a;
+            --error: #f7768e;
+            --font-mono: 'Fira Code', 'Consolas', monospace;
+            --font-sans: 'Inter', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-sans);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--bg-panel);
+            padding: 0 20px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 1.2rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        header .icon { font-size: 1.5rem; }
+
+        /* Main Layout */
+        main {
+            display: grid;
+            grid-template-columns: 350px 1fr 1fr;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        /* Panels */
+        .panel {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .panel:last-child { border-right: none; }
+
+        .panel-header {
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.2);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        /* Data Grid Styles (Replacing JSON Editor) */
+        .relation-wrapper {
+            margin-bottom: 25px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .relation-header {
+            background: rgba(0,0,0,0.3);
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--accent);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .data-grid {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .data-grid th, .data-grid td {
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        .data-grid th {
+            background: var(--bg-input);
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        .editable-cell {
+            background: transparent;
+            color: var(--text-main);
+            transition: background 0.2s;
+            cursor: text;
+        }
+
+        .editable-cell:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .editable-cell:focus {
+            background: var(--bg-dark);
+            color: white;
+            box-shadow: inset 0 0 0 1px var(--accent);
+        }
+
+        /* Query Editor (Middle) */
+        .toolbar {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .op-btn {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .op-btn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .query-input {
+            width: 100%;
+            height: 150px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            padding: 15px;
+            resize: none;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .run-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        .run-btn:hover { background-color: var(--accent-hover); }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 15px;
+            line-height: 1.5;
+        }
+
+        .help-text code {
+            background: var(--bg-panel);
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: var(--text-main);
+        }
+
+        /* Results (Right) */
+        .result-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .status-error { background: rgba(247, 118, 142, 0.1); color: var(--error); border: 1px solid var(--error); }
+        .status-success { background: rgba(158, 206, 106, 0.1); color: var(--success); border: 1px solid var(--success); }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        thead {
+            background-color: var(--bg-panel);
+            position: sticky;
+            top: 0;
+        }
+
+        th, td {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        th { color: var(--accent); font-weight: 600; }
+        tr:hover td { background-color: rgba(255,255,255,0.02); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            main { grid-template-columns: 1fr; overflow-y: auto; }
+            .panel { border-right: none; border-bottom: 1px solid var(--border); height: 400px; }
+            body { overflow: auto; height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1><span class="icon">🧮</span> Relational Algebra Calculator</h1>
+    <div style="font-size: 0.8rem; color: var(--text-muted);">v1.1.0 (Table View)</div>
+</header>
+
+<main>
+    <!-- LEFT PANEL: Data Grid -->
+    <section class="panel">
+        <div class="panel-header">
+            <span>Input Relations</span>
+            <button class="btn-sm" onclick="resetData()">Reset Default</button>
+        </div>
+        <div class="panel-content" id="dataGridContainer">
+            <!-- Tables are rendered here by JS -->
+        </div>
+    </section>
+
+    <!-- MIDDLE PANEL: Query -->
+    <section class="panel">
+        <div class="panel-header">Query Builder</div>
+        <div class="panel-content">
+            <div class="toolbar">
+                <button class="op-btn" onclick="insert('PROJECT(columns, table)')" title="Projection (π)">π (Project)</button>
+                <button class="op-btn" onclick="insert('SELECT(condition, table)')" title="Selection (σ)">σ (Select)</button>
+                <button class="op-btn" onclick="insert('JOIN(table1, table2, condition)')" title="Natural Join (⋈)">⋈ (Join)</button>
+                <button class="op-btn" onclick="insert('PRODUCT(table1, table2)')" title="Cartesian Product (×)">× (Product)</button>
+                <button class="op-btn" onclick="insert('UNION(table1, table2)')" title="Union (∪)">∪ (Union)</button>
+                <button class="op-btn" onclick="insert('DIFF(table1, table2)')" title="Difference (-)">- (Diff)</button>
+            </div>
+
+            <textarea id="queryInput" class="query-input" placeholder="Type your query here..." spellcheck="false"></textarea>
+            
+            <button class="run-btn" onclick="runQuery()">Run Query</button>
+
+            <div class="help-text">
+                <strong>Syntax Guide:</strong><br>
+                • <code>PROJECT(name, age)(Student)</code><br>
+                • <code>SELECT(age > 20)(Student)</code><br>
+                • <code>JOIN(Student, Enrolled, Student.id == Enrolled.stu_id)</code><br>
+                • Use <code>&&</code> for AND, <code>||</code> for OR.<br>
+                • Strings in quotes: <code>name == "John"</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- RIGHT PANEL: Result -->
+    <section class="panel">
+        <div class="panel-header">Results</div>
+        <div class="panel-content">
+            <div id="statusBox" class="result-status"></div>
+            
+            <div id="resultContainer" class="table-wrapper">
+                <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+                    Results will appear here
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    // --- Default Data Source ---
+    const defaultData = {
+        "Student": [
+            { "id": 1, "name": "El Khansae", "age": 18, "major": "dev" },
+            { "id": 2, "name": "Mohammed Reda", "age": 18, "major": "Math" },
+            { "id": 3, "name": "Ayoub", "age": 20, "major": "physics" },
+            { "id": 4, "name": "Rachid", "age": 19, "major": "dev" }
+        ],
+        "Course": [
+            { "id cours": 101, "title": "Intro to algo", "salle": 4 },
+            { "id cours": 102, "title": "Calculus Algebra", "salle": 3 },
+            { "id cours": 103, "title": "Mechanics", "salle": 5 }
+        ],
+        "Enrolled": [
+            { "eid": 1, "stu_id": 1, "course_id": 101, "grade": "A" },
+            { "eid": 2, "stu_id": 1, "course_id": 102, "grade": "B" },
+            { "eid": 3, "stu_id": 2, "course_id": 102, "grade": "A" },
+            { "eid": 4, "stu_id": 3, "course_id": 103, "grade": "C" }
+        ]
+    };
+
+    const queryInput = document.getElementById('queryInput');
+    const statusBox = document.getElementById('statusBox');
+    const resultContainer = document.getElementById('resultContainer');
+    const dataGridContainer = document.getElementById('dataGridContainer');
+
+    // --- Initialization ---
+    window.onload = () => {
+        renderDataGrid();
+        queryInput.value = 'SELECT(age >= 18)(Student)';
+    };
+
+    // --- Data Grid Logic ---
+
+    function renderDataGrid() {
+        dataGridContainer.innerHTML = ''; // Clear existing
+
+        for (const [relationName, rows] of Object.entries(defaultData)) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'relation-wrapper';
+
+            // Header
+            const header = document.createElement('div');
+            header.className = 'relation-header';
+            header.innerHTML = `<span>${relationName}</span>`;
+            
+            // Table
+            const table = document.createElement('table');
+            table.className = 'data-grid';
+            table.dataset.name = relationName; // Store relation name for extraction
+
+            if (rows.length > 0) {
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                const columns = Object.keys(rows[0]);
+                
+                columns.forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = col;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                rows.forEach(rowData => {
+                    const tr = document.createElement('tr');
+                    columns.forEach(col => {
+                        const td = document.createElement('td');
+                        td.className = 'editable-cell';
+                        td.contentEditable = "true";
+                        td.textContent = rowData[col];
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+            } else {
+                const tbody = document.createElement('tbody');
+                tbody.innerHTML = '<tr><td style="color:var(--text-muted)">Empty Relation</td></tr>';
+                table.appendChild(tbody);
+            }
+
+            wrapper.appendChild(header);
+            wrapper.appendChild(table);
+            dataGridContainer.appendChild(wrapper);
+        }
+    }
+
+    function getDataFromGrid() {
+        const db = {};
+        const tables = document.querySelectorAll('.data-grid');
+
+        tables.forEach(table => {
+            const relationName = table.dataset.name;
+            const rows = [];
+            const headerRow = table.querySelector('thead tr');
+            
+            if (!headerRow) return;
+
+            const columns = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent);
+            const bodyRows = table.querySelectorAll('tbody tr');
+
+            bodyRows.forEach(tr => {
+                const cells = tr.querySelectorAll('td');
+                const rowObj = {};
+                let isEmpty = true;
+
+                cells.forEach((td, index) => {
+                    if (index < columns.length) {
+                        let val = td.textContent.trim();
+                        // Heuristic: Try to parse numbers, otherwise keep as string
+                        if (!isNaN(val) && val !== '') {
+                            val = Number(val);
+                        }
+                        rowObj[columns[index]] = val;
+                        if (val !== '') isEmpty = false;
+                    }
+                });
+
+                if (!isEmpty) rows.push(rowObj);
+            });
+
+            db[relationName] = rows;
+        });
+
+        return db;
+    }
+
+    function resetData() {
+        // We re-render the visual tables from the original constant object
+        renderDataGrid();
+        showStatus('Data reset to default.', 'success');
+    }
+
+    // --- Query Logic ---
+
+    function insert(text) {
+        const start = queryInput.selectionStart;
+        const end = queryInput.selectionEnd;
+        const val = queryInput.value;
+        queryInput.value = val.substring(0, start) + text + val.substring(end);
+        queryInput.focus();
+        queryInput.selectionStart = queryInput.selectionEnd = start + text.length;
+    }
+
+    function runQuery() {
+        statusBox.style.display = 'none';
+        resultContainer.innerHTML = '';
+        
+        // SCRAPE DATA FROM HTML TABLES
+        let db;
+        try {
+            db = getDataFromGrid();
+        } catch (e) {
+            showStatus('Error reading tables: ' + e.message, 'error');
+            return;
+        }
+
+        const query = queryInput.value.trim();
+        if (!query) {
+            showStatus('Please enter a query.', 'error');
+            return;
+        }
+
+        try {
+            const result = evaluate(query, db);
+            renderResultTable(result);
+            showStatus(`Success! ${result.length} rows returned.`, 'success');
+        } catch (e) {
+            showStatus(e.message, 'error');
+        }
+    }
+
+    function showStatus(msg, type) {
+        statusBox.textContent = msg;
+        statusBox.className = `result-status status-${type}`;
+        statusBox.style.display = 'block';
+    }
+
+    function renderResultTable(data) {
+        if (!data || data.length === 0) {
+            resultContainer.innerHTML = '<div style="padding: 20px; text-align: center;">Empty Result Set</div>';
+            return;
+        }
+
+        const keys = Object.keys(data[0]);
+        let html = '<table><thead><tr>';
+        
+        keys.forEach(k => html += `<th>${escapeHtml(k)}</th>`);
+        html += '</tr></thead><tbody>';
+
+        data.forEach(row => {
+            html += '<tr>';
+            keys.forEach(k => {
+                html += `<td>${escapeHtml(String(row[k]))}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        resultContainer.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+        if(!text) return "";
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // --- Engine (Parser & Evaluator) ---
+
+    function evaluate(expr, db) {
+        expr = expr.trim();
+
+        // 1. Base Relation
+        if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(expr)) {
+            if (!db[expr]) throw new Error(`Relation "${expr}" not found.`);
+            return JSON.parse(JSON.stringify(db[expr]));
+        }
+
+        // 2. Function Call: OP(ARGS)
+        const match = expr.match(/^([a-zA-Z_]+)\((.*)\)$/s);
+        if (!match) throw new Error(`Syntax Error: Invalid expression "${expr}"`);
+
+        const op = match[1].toUpperCase();
+        const argsStr = match[2];
+        const args = splitArgs(argsStr);
+
+        switch (op) {
+            case 'SELECT': 
+                if (args.length !== 2) throw new Error('SELECT requires 2 arguments: condition, relation');
+                const sourceSel = evaluate(args[1], db);
+                return performSelect(sourceSel, args[0]);
+
+            case 'PROJECT': 
+                if (args.length !== 2) throw new Error('PROJECT requires 2 arguments: columns, relation');
+                const sourceProj = evaluate(args[1], db);
+                const columns = args[0].split(',').map(s => s.trim());
+                return performProject(sourceProj, columns);
+
+            case 'JOIN': 
+                if (args.length < 2) throw new Error('JOIN requires at least 2 arguments');
+                const t1 = evaluate(args[0], db);
+                const t2 = evaluate(args[1], db);
+                const joinCond = args[2] || "true"; 
+                return performJoin(t1, t2, joinCond);
+
+            case 'PRODUCT': 
+                if (args.length !== 2) throw new Error('PRODUCT requires 2 arguments');
+                return performProduct(evaluate(args[0], db), evaluate(args[1], db));
+
+            case 'UNION': 
+                if (args.length !== 2) throw new Error('UNION requires 2 arguments');
+                return performUnion(evaluate(args[0], db), evaluate(args[1], db));
+
+            case 'DIFF': 
+            case 'MINUS':
+                if (args.length !== 2) throw new Error('DIFF requires 2 arguments');
+                return performDiff(evaluate(args[0], db), evaluate(args[1], db));
+
+            default:
+                throw new Error(`Unknown operator: ${op}`);
+        }
+    }
+
+    function splitArgs(str) {
+        const args = [];
+        let depth = 0;
+        let current = '';
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === '(') depth++;
+            if (char === ')') depth--;
+            if (char === ',' && depth === 0) {
+                args.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        if (current.trim()) args.push(current.trim());
+        return args;
+    }
+
+    function performSelect(data, condition) {
+        try {
+            const func = new Function('row', `return ${condition};`);
+            return data.filter(row => {
+                try { return func(row); } 
+                catch (e) { return false; }
+            });
+        } catch (e) {
+            throw new Error(`Invalid condition syntax: ${condition}`);
+        }
+    }
+
+    function performProject(data, columns) {
+        return data.map(row => {
+            const newRow = {};
+            columns.forEach(col => {
+                if (row.hasOwnProperty(col)) newRow[col] = row[col];
+            });
+            return newRow;
+        });
+    }
+
+    function performProduct(data1, data2) {
+        const result = [];
+        data1.forEach(r1 => {
+            data2.forEach(r2 => {
+                result.push({ ...r1, ...r2 });
+            });
+        });
+        return result;
+    }
+
+    function performJoin(data1, data2, condition) {
+        const product = performProduct(data1, data2);
+        try {
+            const func = new Function('row', `return ${condition};`);
+            return product.filter(row => func(row));
+        } catch (e) {
+            throw new Error(`Invalid join condition: ${condition}`);
+        }
+    }
+
+    function performUnion(data1, data2) {
+        const s = new Set();
+        const result = [];
+        [...data1, ...data2].forEach(row => {
+            const sig = JSON.stringify(row);
+            if (!s.has(sig)) { s.add(sig); result.push(row); }
+        });
+        return result;
+    }
+
+    function performDiff(data1, data2) {
+        const s2 = new Set(data2.map(row => JSON.stringify(row)));
+        return data1.filter(row => !s2.has(JSON.stringify(row)));
+    }
+</script>
+</body>
+</html>
