@@ -1,0 +1,278 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AtlasShop Manager - Prototype Analytique</title>
+    <style>
+        :root {
+            --primary: #050062; 
+            --accent: #feffbf;  
+            --dark: #2c3e50;
+            --light: #f4f7f6;
+            --white: #ffffff;
+            --border: #dee2e6;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--light);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* --- SPRINT 1: L'Interface Dashboard --- */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid var(--accent);
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 20px;
+            padding: 20px;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.158);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        h2 { font-size: 1.2rem; color: var(--dark); border-left: 4px solid var(--accent); padding-left: 10px; margin-top: 0; }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: 'Consolas', monospace;
+            background: #282c34;
+            color: #abb2bf;
+            resize: none;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover { background-color: #00044d; transform: translateY(-1px); }
+
+        .examples {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            background: #f1f1f1;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        /* --- Table Styling --- */
+        .results-scroll { overflow-y: auto; flex-grow: 1; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table th {
+            background-color: #f8f9fa;
+            color: var(--primary);
+            text-align: left;
+            padding: 12px;
+            border-bottom: 2px solid var(--primary);
+            position: sticky;
+            top: 0;
+        }
+
+        table td { padding: 12px; border-bottom: 1px solid #eee; }
+
+        .error-box {
+            color: var(--accent);
+            background: #fff5f5;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--accent);
+            font-weight: bold;
+        }
+
+        .badge-city { background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1 style="margin:0">AtlasShop Manager 🇲🇦</h1>
+        <small>Système d'Analyse Interne - BTS DAI</small>
+    </div>
+    <div style="text-align: right">
+        <strong>Lycée Technique Fès</strong><br>
+        <span>Session 2026</span>
+    </div>
+</header>
+
+<div class="container">
+    <aside class="panel">
+        <h2>Console SQL</h2>
+        <textarea id="sqlQuery" placeholder="SELECT * FROM clients WHERE ville = 'Casablanca'"></textarea>
+        <button onclick="processQuery()">Lancer l'analyse</button>
+
+        <div class="examples">
+            <strong>Exemples à tester :</strong>
+            <ul>
+                <li><code>SELECT * FROM clients</code></li>
+                <li><code>SELECT nom, ville FROM clients WHERE ville = 'Rabat'</code></li>
+                <li><code>SELECT * FROM commandes WHERE prix > 2000</code></li>
+                <li><code>SELECT * FROM commandes ORDER BY prix DESC</code></li>
+            </ul>
+        </div>
+    </aside>
+
+    <main class="panel">
+        <h2>Résultats de la requête</h2>
+        <div id="displayArea" class="results-scroll">
+            <p style="color: #999999; text-align: center; margin-top: 100px;">Saisissez une requête SQL pour voir les données locales d'AtlasShop.</p>
+        </div>
+    </main>
+</div>
+
+<script>
+    /* --- SPRINT 2 & 3: Données Localisées (Schema Maroc) --- */
+    const atlasDatabase = {
+        clients: [
+            { id: 1, nom: "Alami", prenom: "Ahmed", ville: "Casablanca", age: 28 },
+            { id: 2, nom: "Bennani", prenom: "Sara", ville: "Rabat", age: 24 },
+            { id: 3, nom: "Idrissi", prenom: "Karim", ville: "Marrakech", age: 31 },
+            { id: 4, nom: "Chaoui", prenom: "Fatima", ville: "Tanger", age: 27 },
+            { id: 5, nom: "El Fassi", prenom: "Youssef", ville: "Fès", age: 29 },
+            { id: 6, nom: "Mansouri", prenom: "Hiba", ville: "Agadir", age: 22 },
+            { id: 7, nom: "Tahiri", prenom: "Omar", ville: "Casablanca", age: 35 }
+        ],
+        commandes: [
+            { id: 101, client_id: 1, produit: "Samsung Galaxy", prix: 4500.00, statut: "Livré" },
+            { id: 102, client_id: 2, produit: "Laptop HP", prix: 7200.50, statut: "En cours" },
+            { id: 103, client_id: 3, produit: "Ecouteurs BT", prix: 350.00, statut: "Livré" },
+            { id: 104, client_id: 1, produit: "Coque Phone", prix: 120.00, statut: "Annulé" },
+            { id: 105, client_id: 5, produit: "MacBook Air", prix: 12500.00, statut: "Livré" },
+            { id: 106, client_id: 7, produit: "Clavier RGB", prix: 650.00, statut: "En cours" }
+        ]
+    };
+
+    function processQuery() {
+        const query = document.getElementById('sqlQuery').value.trim();
+        const display = document.getElementById('displayArea');
+        
+        try {
+            const results = parseSQL(query);
+            renderTable(results);
+        } catch (err) {
+            display.innerHTML = `<div class="error-box">⚠️ ERREUR : ${err.message}</div>`;
+        }
+    }
+
+    /* --- SPRINT 2, 3 & 4: Moteur de Traitement --- */
+    function parseSQL(sql) {
+        const normalized = sql.toUpperCase();
+        
+        // 1. Validation de la Table (Sprint 4: Gestion d'erreurs)
+        let tableName = "";
+        if (normalized.includes("FROM CLIENTS")) tableName = "clients";
+        else if (normalized.includes("FROM COMMANDES")) tableName = "commandes";
+        else throw new Error("Table introuvable. Utilisez 'clients' ou 'commandes'.");
+
+        let data = [...atlasDatabase[tableName]];
+
+        // 2. Filtrage (Sprint 3: WHERE)
+        if (normalized.includes("WHERE")) {
+            const wherePart = sql.split(/WHERE/i)[1].split(/ORDER BY/i)[0].trim();
+            
+            if (wherePart.includes(">")) {
+                const [key, val] = wherePart.split(">").map(s => s.trim());
+                data = data.filter(item => item[key.toLowerCase()] > parseFloat(val));
+            } else if (wherePart.includes("=")) {
+                const [key, val] = wherePart.split("=").map(s => s.trim().replace(/'/g, ""));
+                data = data.filter(item => item[key.toLowerCase()].toString().toLowerCase() === val.toLowerCase());
+            }
+        }
+
+        // 3. Tri (Sprint 4: ORDER BY)
+        if (normalized.includes("ORDER BY")) {
+            const orderPart = normalized.split("ORDER BY")[1].trim();
+            const [col, dir] = orderPart.split(" ");
+            const column = col.toLowerCase();
+            
+            data.sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+                return (dir === "DESC") ? (valB - valA) : (valA - valB);
+            });
+        }
+
+        // 4. Projection (SELECT)
+        const selectPart = normalized.split("FROM")[0].replace("SELECT", "").trim();
+        if (selectPart !== "*") {
+            const columns = selectPart.split(",").map(c => c.trim().toLowerCase());
+            data = data.map(item => {
+                let newItem = {};
+                columns.forEach(col => newItem[col] = item[col]);
+                return newItem;
+            });
+        }
+
+        return data;
+    }
+
+    function renderTable(data) {
+        const display = document.getElementById('displayArea');
+        if (data.length === 0) {
+            display.innerHTML = "<p>Aucun résultat trouvé pour cette requête.</p>";
+            return;
+        }
+
+        let html = `<table><thead><tr>`;
+        Object.keys(data[0]).forEach(key => html += `<th>${key.toUpperCase()}</th>`);
+        html += `</tr></thead><tbody>`;
+
+        data.forEach(row => {
+            html += `<tr>`;
+            Object.entries(row).forEach(([key, val]) => {
+                let formatted = val;
+                if (key === 'prix') formatted = `<strong>${val.toFixed(2)} MAD</strong>`;
+                if (key === 'ville') formatted = `<span class="badge-city">${val}</span>`;
+                html += `<td>${formatted}</td>`;
+            });
+            html += `</tr>`;
+        });
+
+        html += `</tbody></table><p style='font-size: 0.8rem; color: #666;'>Total: ${data.length} entrées trouvées.</p>`;
+        display.innerHTML = html;
+    }
+</script>
+
+</body>
+</html>
